@@ -44,7 +44,7 @@ async function writeRSCStream(rscStream, controller) {
 
   let remaining = decoder.decode();
   if (remaining.length) {
-    writeChunk(remaining, controller);
+    writeChunk(JSON.stringify(remaining), controller);
   }
 }
 

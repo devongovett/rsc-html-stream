@@ -1,0 +1,19 @@
+{
+  "name": "rsc-html-stream",
+  "version": "0.0.0",
+  "description": "Inject an RSC payload into an HTML stream and read it back",
+  "type": "module",
+  "exports": {
+    "./client": {
+      "types": "./client.d.ts",
+      "default": "./client.js"
+    },
+    "./server": {
+      "types": "./server.d.ts",
+      "default": "./server.js"
+    }
+  },
+  "repository": "https://github.com/devongovett/rsc-html-stream",
+  "author": "Devon Govett <devongovett@gmail.com>",
+  "license": "MIT"
+}

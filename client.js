@@ -2,7 +2,7 @@ let encoder = new TextEncoder();
 let streamController;
 export let rscStream = new ReadableStream({
   start(controller) {
-    if (typeof window === 'undefined' || !Array.isArray(window.__FLIGHT_DATA)) {
+    if (typeof window === 'undefined') {
       return;
     }
     let handleChunk = chunk => {
@@ -12,13 +12,12 @@ export let rscStream = new ReadableStream({
         controller.enqueue(chunk);
       }
     };
-    for (let chunk of window.__FLIGHT_DATA) {
-      handleChunk(chunk);
-    }
-    streamController = controller;
+    window.__FLIGHT_DATA ||= [];
+    window.__FLIGHT_DATA.forEach(handleChunk);
     window.__FLIGHT_DATA.push = (chunk) => {
       handleChunk(chunk);
     };
+    streamController = controller;
   },
 });
 

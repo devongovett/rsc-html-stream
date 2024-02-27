@@ -28,7 +28,7 @@ export function injectRSCPayload(rscStream) {
     },
     async flush(controller) {
       await flightDataPromise;
-      controller.enqueue(encoder.encode('</body></html>'));
+      controller.enqueue(encoder.encode(trailer));
     }
   });
 }

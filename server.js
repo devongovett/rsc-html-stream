@@ -6,20 +6,20 @@ export function injectRSCPayload(rscStream) {
   let flightDataPromise = new Promise((resolve) => resolveFlightDataPromise = resolve);
   let started = false;
   return new TransformStream({
-    transform(chunk, controller) {    
+    transform(chunk, controller) {
       let buf = decoder.decode(chunk);
       controller.enqueue(encoder.encode(buf.replace('</body></html>', '')));
 
       if (!started) {
         started = true;
-        process.nextTick(async () => {
+        setTimeout(async () => {
           try {
             await writeRSCStream(rscStream, controller);
           } catch (err) {
             controller.error(err);
           }
           resolveFlightDataPromise();
-        });
+        }, 0);
       }
     },
     async flush(controller) {

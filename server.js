@@ -1,4 +1,5 @@
 const encoder = new TextEncoder();
+const trailer = '</body></html>';
 
 export function injectRSCPayload(rscStream) {
   let decoder = new TextDecoder();
@@ -8,7 +9,10 @@ export function injectRSCPayload(rscStream) {
   return new TransformStream({
     transform(chunk, controller) {
       let buf = decoder.decode(chunk);
-      controller.enqueue(encoder.encode(buf.replace('</body></html>', '')));
+      if (buf.endsWith(trailer)) {
+        buf = buf.slice(0, -trailer.length);
+      }
+      controller.enqueue(encoder.encode(buf));
 
       if (!started) {
         started = true;

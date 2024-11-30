@@ -5,30 +5,50 @@ export function injectRSCPayload(rscStream) {
   let decoder = new TextDecoder();
   let resolveFlightDataPromise;
   let flightDataPromise = new Promise((resolve) => resolveFlightDataPromise = resolve);
-  let started = false;
-  return new TransformStream({
-    transform(chunk, controller) {
+  let startedRSC = false;
+
+  // Buffer all HTML chunks enqueued during the current tick of the event loop (roughly)
+  // and write them to the output stream all at once. This ensures that we don't generate
+  // invalid HTML by injecting RSC in between two partial chunks of HTML.
+  let buffered = [];
+  let timeout = null;
+  function flushBufferedChunks(controller) {
+    for (let chunk of buffered) {
       let buf = decoder.decode(chunk);
       if (buf.endsWith(trailer)) {
         buf = buf.slice(0, -trailer.length);
       }
       controller.enqueue(encoder.encode(buf));
+    }
+  
+    buffered.length = 0;
+    timeout = null;
+  }  
 
-      if (!started) {
-        started = true;
-        setTimeout(async () => {
-          try {
-            await writeRSCStream(rscStream, controller);
-          } catch (err) {
-            controller.error(err);
-          }
-          resolveFlightDataPromise();
-        }, 0);
+  return new TransformStream({
+    transform(chunk, controller) {
+      buffered.push(chunk);
+      if (timeout) {
+        return;
       }
+
+      timeout = setTimeout(async () => {
+        flushBufferedChunks(controller);
+        if (!startedRSC) {
+          startedRSC = true;
+          writeRSCStream(rscStream, controller)
+            .catch(err => controller.error(err))
+            .then(resolveFlightDataPromise);
+        }
+      }, 0);
     },
     async flush(controller) {
       await flightDataPromise;
-      controller.enqueue(encoder.encode(trailer));
+      if (timeout) {
+        clearTimeout(timeout);
+        flushBufferedChunks(controller);
+      }
+      controller.enqueue(encoder.encode('</body></html>'));
     }
   });
 }

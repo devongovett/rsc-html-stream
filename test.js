@@ -6,20 +6,21 @@ import {injectRSCPayload} from './server.js';
 
 const client = fs.readFileSync('client.js', 'utf8').replace('export let ', 'window.');
 
-function testStream(chunks) {
+function testStream(chunks, ref) {
   let encoder = new TextEncoder();
   return new ReadableStream({
-    pull(controller) {
-      if (chunks.length) {
+    async pull(controller) {
+      while (chunks.length) {
         let chunk = chunks.shift();
-        if (typeof chunk === 'string') {
+        if (typeof chunk === 'function') {
+          await chunk();
+        } else if (typeof chunk === 'string') {
           controller.enqueue(encoder.encode(chunk));
         } else {
           controller.enqueue(chunk);
         }
-      } else {
-        controller.close();
       }
+      controller.close();
     }
   });
 }
@@ -78,4 +79,18 @@ test('should handle binary data', async () => {
     114,   1,   2,  3,  4,  5,
     226,  40, 161
   ]));
+});
+
+test('should handle chunked data', async () => {
+  let resolve;
+  let html = testStream(['<html><body><h1>Test</h1>', () =>  new Promise(r => setTimeout(r, 3)), '<p>Hello', () => resolve(), ' world</p></body></html>']);
+  let rscStream = testStream(['foo bar', () => new Promise(r => resolve = r), 'baz qux', 'abcdef']);
+  let injected = html.pipeThrough(injectRSCPayload(rscStream));
+
+  let result = await streamToString(injected);
+  assert.equal(result, '<html><body><h1>Test</h1><script>(self.__FLIGHT_DATA||=[]).push("foo bar")</script><script>(self.__FLIGHT_DATA||=[]).push("baz qux")</script><script>(self.__FLIGHT_DATA||=[]).push("abcdef")</script><p>Hello world</p></body></html>');
+
+  let clientStream = runScripts(result);
+  let decoded = await streamToString(clientStream);
+  assert.equal(decoded, 'foo barbaz quxabcdef');
 });

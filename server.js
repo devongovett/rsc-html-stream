@@ -14,16 +14,24 @@ export function injectRSCPayload(rscStream) {
   let timeout = null;
   function flushBufferedChunks(controller) {
     for (let chunk of buffered) {
-      let buf = decoder.decode(chunk);
+      let buf = decoder.decode(chunk, {stream: true});
       if (buf.endsWith(trailer)) {
         buf = buf.slice(0, -trailer.length);
       }
       controller.enqueue(encoder.encode(buf));
     }
-  
+
+    let remaining = decoder.decode();
+    if (remaining.length) {
+      if (remaining.endsWith(trailer)) {
+        remaining = remaining.slice(0, -trailer.length);
+      }
+      controller.enqueue(encoder.encode(remaining));
+    }
+
     buffered.length = 0;
     timeout = null;
-  }  
+  }
 
   return new TransformStream({
     transform(chunk, controller) {
@@ -48,7 +56,7 @@ export function injectRSCPayload(rscStream) {
         clearTimeout(timeout);
         flushBufferedChunks(controller);
       }
-      controller.enqueue(encoder.encode('</body></html>'));
+      controller.enqueue(encoder.encode(trailer));
     }
   });
 }

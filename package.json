@@ -1,6 +1,6 @@
 {
   "name": "rsc-html-stream",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Inject an RSC payload into an HTML stream and read it back",
   "type": "module",
   "exports": {

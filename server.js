@@ -1,7 +1,7 @@
 const encoder = new TextEncoder();
 const trailer = '</body></html>';
 
-export function injectRSCPayload(rscStream) {
+export function injectRSCPayload(rscStream, nonce) {
   let decoder = new TextDecoder();
   let resolveFlightDataPromise;
   let flightDataPromise = new Promise((resolve) => resolveFlightDataPromise = resolve);
@@ -44,7 +44,7 @@ export function injectRSCPayload(rscStream) {
         flushBufferedChunks(controller);
         if (!startedRSC) {
           startedRSC = true;
-          writeRSCStream(rscStream, controller)
+          writeRSCStream(rscStream, controller, nonce)
             .catch(err => controller.error(err))
             .then(resolveFlightDataPromise);
         }
@@ -61,27 +61,27 @@ export function injectRSCPayload(rscStream) {
   });
 }
 
-async function writeRSCStream(rscStream, controller) {
+async function writeRSCStream(rscStream, controller, nonce) {
   let decoder = new TextDecoder('utf-8', {fatal: true});
   for await (let chunk of rscStream) {
     // Try decoding the chunk to send as a string.
     // If that fails (e.g. binary data that is invalid unicode), write as base64.
     try {
-      writeChunk(JSON.stringify(decoder.decode(chunk, {stream: true})), controller);
+      writeChunk(JSON.stringify(decoder.decode(chunk, {stream: true})), controller, nonce);
     } catch (err) {
       let base64 = JSON.stringify(btoa(String.fromCodePoint(...chunk)));
-      writeChunk(`Uint8Array.from(atob(${base64}), m => m.codePointAt(0))`, controller);
+      writeChunk(`Uint8Array.from(atob(${base64}), m => m.codePointAt(0))`, controller, nonce);
     }
   }
 
   let remaining = decoder.decode();
   if (remaining.length) {
-    writeChunk(JSON.stringify(remaining), controller);
+    writeChunk(JSON.stringify(remaining), controller, nonce);
   }
 }
 
-function writeChunk(chunk, controller) {
-  controller.enqueue(encoder.encode(`<script>${escapeScript(`(self.__FLIGHT_DATA||=[]).push(${chunk})`)}</script>`));
+function writeChunk(chunk, controller, nonce) {
+  controller.enqueue(encoder.encode(`<script${nonce ? ` nonce="${nonce}"` : ""}>${escapeScript(`(self.__FLIGHT_DATA||=[]).push(${chunk})`)}</script>`));
 }
 
 // Escape closing script tags and HTML comments in JS content.

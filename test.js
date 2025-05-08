@@ -99,7 +99,7 @@ test('should support nonce', async () => {
   let html = testStream(['<html><body><h1>Test</h1>', '<p>Hello world</p></body></html>']);
   let rscStream = testStream(['foo bar']);
   let nonce = "test";
-  let injected = html.pipeThrough(injectRSCPayload(rscStream, nonce));
+  let injected = html.pipeThrough(injectRSCPayload(rscStream, { nonce }));
 
   let result = await streamToString(injected);
   assert.equal(result, '<html><body><h1>Test</h1><p>Hello world</p><script nonce="test">(self.__FLIGHT_DATA||=[]).push("foo bar")</script></body></html>');

@@ -1,11 +1,12 @@
 const encoder = new TextEncoder();
 const trailer = '</body></html>';
 
-export function injectRSCPayload(rscStream, nonce) {
+export function injectRSCPayload(rscStream, options) {
   let decoder = new TextDecoder();
   let resolveFlightDataPromise;
   let flightDataPromise = new Promise((resolve) => resolveFlightDataPromise = resolve);
   let startedRSC = false;
+  let nonce = options && typeof options.nonce === 'string' ? options.nonce : undefined;
 
   // Buffer all HTML chunks enqueued during the current tick of the event loop (roughly)
   // and write them to the output stream all at once. This ensures that we don't generate

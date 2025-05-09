@@ -1,1 +1,1 @@
-declare export function injectRSCPayload(rscStream: ReadableStream): TransformStream;
+declare export function injectRSCPayload(rscStream: ReadableStream, options?: { nonce?: string }): TransformStream;

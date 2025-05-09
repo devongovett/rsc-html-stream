@@ -25,8 +25,8 @@ function testStream(chunks, ref) {
   });
 }
 
-function runScripts(html) {
-  let scripts = html.matchAll(/<script>(.*?)<\/script>/g);
+function runScripts(html, nonce) {
+  let scripts = html.matchAll(new RegExp(`<script${nonce ? ` nonce="${nonce}"` : ''}>(.*?)<\/script>`, 'g'));
   let window = {};
   let ctx = vm.createContext({self: window, window, TextEncoder, ReadableStream, atob});
   for (let script of scripts) {
@@ -94,3 +94,17 @@ test('should handle chunked data', async () => {
   let decoded = await streamToString(clientStream);
   assert.equal(decoded, 'foo barbaz quxabcdef');
 });
+
+test('should support nonce', async () => {
+  let html = testStream(['<html><body><h1>Test</h1>', '<p>Hello world</p></body></html>']);
+  let rscStream = testStream(['foo bar']);
+  let nonce = "test";
+  let injected = html.pipeThrough(injectRSCPayload(rscStream, { nonce }));
+
+  let result = await streamToString(injected);
+  assert.equal(result, '<html><body><h1>Test</h1><p>Hello world</p><script nonce="test">(self.__FLIGHT_DATA||=[]).push("foo bar")</script></body></html>');
+
+  let clientStream = runScripts(result, nonce);
+  let decoded = await streamToString(clientStream);
+  assert.equal(decoded, 'foo bar');
+})

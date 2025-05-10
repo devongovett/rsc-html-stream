@@ -2,7 +2,7 @@ const encoder = new TextEncoder();
 const trailer = '</body></html>';
 
 export function injectRSCPayload(rscStream, options) {
-  let decoder = new TextDecoder();
+  let decoder = new TextDecoder("utf-8");
   let resolveFlightDataPromise;
   let flightDataPromise = new Promise((resolve) => resolveFlightDataPromise = resolve);
   let startedRSC = false;
@@ -14,20 +14,9 @@ export function injectRSCPayload(rscStream, options) {
   let buffered = [];
   let timeout = null;
   function flushBufferedChunks(controller) {
-    for (let chunk of buffered) {
-      let buf = decoder.decode(chunk, {stream: true});
-      if (buf.endsWith(trailer)) {
-        buf = buf.slice(0, -trailer.length);
-      }
-      controller.enqueue(encoder.encode(buf));
-    }
-
-    let remaining = decoder.decode();
-    if (remaining.length) {
-      if (remaining.endsWith(trailer)) {
-        remaining = remaining.slice(0, -trailer.length);
-      }
-      controller.enqueue(encoder.encode(remaining));
+    for (const chunk of buffered) {
+      const html = decoder.decode(chunk, { stream: true });
+      controller.enqueue(encoder.encode(html));
     }
 
     buffered.length = 0;
@@ -57,18 +46,19 @@ export function injectRSCPayload(rscStream, options) {
         clearTimeout(timeout);
         flushBufferedChunks(controller);
       }
+      controller.enqueue(encoder.encode(decoder.decode()));
       controller.enqueue(encoder.encode(trailer));
     }
   });
 }
 
 async function writeRSCStream(rscStream, controller, nonce) {
-  let decoder = new TextDecoder('utf-8', {fatal: true});
+  let decoder = new TextDecoder('utf-8', { fatal: true });
   for await (let chunk of rscStream) {
     // Try decoding the chunk to send as a string.
     // If that fails (e.g. binary data that is invalid unicode), write as base64.
     try {
-      writeChunk(JSON.stringify(decoder.decode(chunk, {stream: true})), controller, nonce);
+      writeChunk(JSON.stringify(decoder.decode(chunk, { stream: true })), controller, nonce);
     } catch (err) {
       let base64 = JSON.stringify(btoa(String.fromCodePoint(...chunk)));
       writeChunk(`Uint8Array.from(atob(${base64}), m => m.codePointAt(0))`, controller, nonce);

@@ -108,3 +108,23 @@ test('should support nonce', async () => {
   let decoded = await streamToString(clientStream);
   assert.equal(decoded, 'foo bar');
 })
+
+test('handle multi-byte character split into multiple html chunks', async () => {
+  // new TextEncoder().encode("🙂") = [ 240, 159, 153, 130 ]
+  const parts = [
+    new Uint8Array([240]),
+    new Uint8Array([159]),
+    new Uint8Array([153, 130])
+  ];
+  // Simulate split by microtask. React SSR shouldn't split by macrotask and if that happens, the character can be garbled.
+  let html = testStream(['<html><body><h1>Test</h1>', parts[0], parts[1], () => Promise.resolve(), parts[2], '<p>Hello world</p></body></html>']);
+  let rscStream = testStream(['foo bar']);
+  let injected = html.pipeThrough(injectRSCPayload(rscStream));
+
+  let result = await streamToString(injected);
+  assert.equal(result, '<html><body><h1>Test</h1>🙂<p>Hello world</p><script>(self.__FLIGHT_DATA||=[]).push("foo bar")</script></body></html>');
+
+  let clientStream = runScripts(result);
+  let decoded = await streamToString(clientStream);
+  assert.equal(decoded, 'foo bar');
+})

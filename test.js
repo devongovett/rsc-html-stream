@@ -108,3 +108,19 @@ test('should support nonce', async () => {
   let decoded = await streamToString(clientStream);
   assert.equal(decoded, 'foo bar');
 })
+
+test('should be able to catch errors', async () => {
+  let html = testStream(['<html><body><h1>html</h1></body></html>']);
+  let rscStream = testStream(['rsc']);
+  let injected = html.pipeThrough(injectRSCPayload(rscStream));
+
+  // `read` and `cancel` in parallel
+  let reader = injected.getReader()
+  let readPromise = reader.read()
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  let cancelPromise = reader.cancel()
+
+  let results = await Promise.allSettled([readPromise, cancelPromise]);
+  assert.equal(results[0].status, 'fulfilled');
+  assert.equal(results[1].status, 'rejected');
+})

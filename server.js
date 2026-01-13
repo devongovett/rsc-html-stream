@@ -14,20 +14,20 @@ export function injectRSCPayload(rscStream, options) {
   let buffered = [];
   let timeout = null;
   function flushBufferedChunks(controller) {
+    // Decode all buffered chunks together so we can reliably detect a trailer that
+    // might be split across chunk boundaries.
+    let combined = '';
     for (let chunk of buffered) {
-      let buf = decoder.decode(chunk, {stream: true});
-      if (buf.endsWith(trailer)) {
-        buf = buf.slice(0, -trailer.length);
-      }
-      controller.enqueue(encoder.encode(buf));
+      combined += decoder.decode(chunk, {stream: true});
+    }
+    combined += decoder.decode();
+
+    if (combined.endsWith(trailer)) {
+      combined = combined.slice(0, -trailer.length);
     }
 
-    let remaining = decoder.decode();
-    if (remaining.length) {
-      if (remaining.endsWith(trailer)) {
-        remaining = remaining.slice(0, -trailer.length);
-      }
-      controller.enqueue(encoder.encode(remaining));
+    if (combined.length) {
+      controller.enqueue(encoder.encode(combined));
     }
 
     buffered.length = 0;

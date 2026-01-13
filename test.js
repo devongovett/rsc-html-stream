@@ -95,6 +95,20 @@ test('should handle chunked data', async () => {
   assert.equal(decoded, 'foo barbaz quxabcdef');
 });
 
+test('should strip trailer even when split across chunks', async () => {
+  let html = testStream(['<html><body><div>Content</div></bod', 'y></html>']);
+  let payload = 'x'.repeat(1024 * 1024);
+  let rscStream = testStream([payload]);
+  let injected = html.pipeThrough(injectRSCPayload(rscStream));
+
+  let result = await streamToString(injected);
+  assert.equal(result, `<html><body><div>Content</div><script>(self.__FLIGHT_DATA||=[]).push("${payload}")</script></body></html>`);
+
+  let clientStream = runScripts(result);
+  let decoded = await streamToString(clientStream);
+  assert.equal(decoded, payload);
+});
+
 test('should support nonce', async () => {
   let html = testStream(['<html><body><h1>Test</h1>', '<p>Hello world</p></body></html>']);
   let rscStream = testStream(['foo bar']);

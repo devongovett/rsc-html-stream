@@ -1,1 +1,1 @@
-declare export let rscStream: ReadableStream;
+export declare let rscStream: ReadableStream;

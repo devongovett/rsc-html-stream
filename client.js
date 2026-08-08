@@ -14,6 +14,7 @@ export let rscStream = new ReadableStream({
     };
     window.__FLIGHT_DATA ||= [];
     window.__FLIGHT_DATA.forEach(handleChunk);
+    window.__FLIGHT_DATA.length = 0;
     window.__FLIGHT_DATA.push = (chunk) => {
       handleChunk(chunk);
     };

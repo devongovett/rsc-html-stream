@@ -42,7 +42,13 @@ export function injectRSCPayload(rscStream, options) {
       }
 
       timeout = setTimeout(async () => {
-        flushBufferedChunks(controller);
+        try {
+          flushBufferedChunks(controller);
+        } catch (e) {
+          controller.error(e);
+          resolveFlightDataPromise();
+          return;
+        }
         if (!startedRSC) {
           startedRSC = true;
           writeRSCStream(rscStream, controller, nonce)
